@@ -8,7 +8,6 @@
 using namespace std;
 
 class CmdParser {
-private:
     unordered_map<string, string> tokens;
 public:
     CmdParser(int argc, char **argv) {

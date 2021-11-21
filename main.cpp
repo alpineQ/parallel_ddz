@@ -7,15 +7,19 @@
 #include "CmdParser.h"
 #include "InputParser.h"
 
+#define ROOT_RANK 0
+
 using namespace std;
 
 int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     CmdParser cmd(argc, argv);
     string inputFilename;
     bool testingMode;
-    size_t nSequences; // n
-    size_t sequenceLength; // m
+    int nSequences; // n
+    int sequenceLength; // m
 
     if (cmd.optionExists("-n") && cmd.optionExists("-m") && !cmd.optionExists("-f")) {
         testingMode = false;
@@ -49,21 +53,34 @@ int main(int argc, char* argv[]) {
                 data[i].push_back(pair(uni(rng), 0.0f));
         }
     }
-    cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
-    cout << "Filename: " << inputFilename << endl;
-    cout << "Amount of sequences: " << nSequences << endl;
-    cout << "Sequence length: " << sequenceLength << endl;
-    cout << "Data:" << endl;
-    for (unsigned i = 0; i < nSequences; ++i) {
-        for (unsigned j = 0; j < sequenceLength; ++j)
-            if (types[i])
-                cout << data[i][j].first << " ";
-            else
-                cout << data[i][j].second << " ";
-        cout << endl;
-    }
 
-//    MPI_Scatter();
+    if (rank == ROOT_RANK) {
+        cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
+        cout << "Filename: " << inputFilename << endl;
+        cout << "Amount of sequences: " << nSequences << endl;
+        cout << "Sequence length: " << sequenceLength << endl;
+        cout << "Data:" << endl;
+        for (unsigned i = 0; i < nSequences; ++i) {
+            for (unsigned j = 0; j < sequenceLength; ++j)
+                if (types[i])
+                    cout << data[i][j].first << " ";
+                else
+                    cout << data[i][j].second << " ";
+            cout << endl;
+        }
+    }
+    int* sendData = new int[nSequences*sequenceLength];
+    for (unsigned i = 0; i < nSequences; ++i)
+        for (unsigned j = 0; j < sequenceLength; ++j)
+            sendData[i*sequenceLength + j] = data[i][j].first;
+    int* recvData = new int[sequenceLength];
+    MPI_Scatter(sendData, sequenceLength, MPI_INT, recvData,
+                    sequenceLength, MPI_INT, 0, MPI_COMM_WORLD);
+
+    cout << "Process " << rank << ": data is ";
+    for (unsigned i = 0; i < sequenceLength; ++i)
+        cout << recvData[i] << " ";
+    cout << endl;
     MPI_Finalize();
 
     return 0;
