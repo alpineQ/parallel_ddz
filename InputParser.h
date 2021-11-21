@@ -32,7 +32,7 @@ public:
             data.emplace_back();
         }
         inputFile.clear();
-        inputFile.seekg(dataPosition, std::ifstream::beg);
+        inputFile.seekg(dataPosition);
 
         for (unsigned i = 0; i < nSequences; ++i)
             for (unsigned j = 0; j < sequenceLength; ++j) {

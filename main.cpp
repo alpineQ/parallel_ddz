@@ -2,6 +2,7 @@
 #include <vector>
 #include "CmdParser.h"
 #include "InputParser.h"
+#include "mpi.h"
 
 using namespace std;
 
@@ -24,25 +25,31 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-
-//    cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
-//    cout << "Filename: " << inputFilename << endl;
-//    cout << "Amount of sequences: " << nSequences << endl;
-//    cout << "Sequence length: " << sequenceLength << endl;
-
+    vector<vector<pair<int, float>>> data;
+    vector<bool> types;
 
     if (testingMode) {
         InputParser input(inputFilename);
-        for (unsigned i = 0; i < input.nSequences; ++i) {
-            for (unsigned j = 0; j < input.sequenceLength; ++j)
-                if (input.types[i])
-                    cout << input.data[i][j].first << " ";
-                else
-                    cout << input.data[i][j].second << " ";
-            cout << endl;
-        }
+        nSequences = input.nSequences;
+        sequenceLength = input.sequenceLength;
+        data = input.data;
+        types = input.types;
     } else {
 
+    }
+
+    cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
+    cout << "Filename: " << inputFilename << endl;
+    cout << "Amount of sequences: " << nSequences << endl;
+    cout << "Sequence length: " << sequenceLength << endl;
+
+    for (unsigned i = 0; i < nSequences; ++i) {
+        for (unsigned j = 0; j < sequenceLength; ++j)
+            if (types[i])
+                cout << data[i][j].first << " ";
+            else
+                cout << data[i][j].second << " ";
+        cout << endl;
     }
 
     return 0;
