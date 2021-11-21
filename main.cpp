@@ -1,7 +1,7 @@
 #include <iostream>
-#include <fstream>
 #include <vector>
 #include "CmdParser.h"
+#include "InputParser.h"
 
 using namespace std;
 
@@ -24,13 +24,26 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    ifstream inputFile(inputFilename);
-    inputFile >> nSequences;
-    inputFile >> sequenceLength;
 
-    cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
-    cout << "Filename: " << inputFilename << endl;
-    cout << "Amount of sequences: " << nSequences << endl;
-    cout << "Sequence length: " << sequenceLength << endl;
+//    cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
+//    cout << "Filename: " << inputFilename << endl;
+//    cout << "Amount of sequences: " << nSequences << endl;
+//    cout << "Sequence length: " << sequenceLength << endl;
+
+
+    if (testingMode) {
+        InputParser input(inputFilename);
+        for (unsigned i = 0; i < input.nSequences; ++i) {
+            for (unsigned j = 0; j < input.sequenceLength; ++j)
+                if (input.types[i])
+                    cout << input.data[i][j].first << " ";
+                else
+                    cout << input.data[i][j].second << " ";
+            cout << endl;
+        }
+    } else {
+
+    }
+
     return 0;
 }
