@@ -1,9 +1,11 @@
 #include <iostream>
 #include <vector>
-#include "CmdParser.h"
-#include "InputParser.h"
+#include <random>
+#include <bits/stdc++.h>
 #include <mpi.h>
 #include <omp.h>
+#include "CmdParser.h"
+#include "InputParser.h"
 
 using namespace std;
 
@@ -37,13 +39,21 @@ int main(int argc, char* argv[]) {
         data = input.data;
         types = input.types;
     } else {
-
+        random_device rd;     // only used once to initialise (seed) engine
+        mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+        uniform_int_distribution<int> uni(INT_MIN, INT_MAX); // guaranteed unbiased
+        for (unsigned i = 0; i < nSequences; ++i) {
+            data.emplace_back();
+            types.push_back(true);
+            for (unsigned j = 0; j < sequenceLength; ++j)
+                data[i].push_back(pair(uni(rng), 0.0f));
+        }
     }
     cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
     cout << "Filename: " << inputFilename << endl;
     cout << "Amount of sequences: " << nSequences << endl;
     cout << "Sequence length: " << sequenceLength << endl;
-
+    cout << "Data:" << endl;
     for (unsigned i = 0; i < nSequences; ++i) {
         for (unsigned j = 0; j < sequenceLength; ++j)
             if (types[i])
@@ -52,6 +62,8 @@ int main(int argc, char* argv[]) {
                 cout << data[i][j].second << " ";
         cout << endl;
     }
+
+//    MPI_Scatter();
     MPI_Finalize();
 
     return 0;

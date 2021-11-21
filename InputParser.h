@@ -45,27 +45,6 @@ public:
             }
         inputFile.close();
     }
-
-private:
-    static bool isFloatNumber(const string& input){
-        std::string::const_iterator it = input.begin();
-        bool decimalPoint = false;
-        int minSize = 0;
-        if(!input.empty() && (input[0] == '-' || input[0] == '+')){
-            it++;
-            minSize++;
-        }
-        while(it != input.end()){
-            if(*it == '.'){
-                if(!decimalPoint) decimalPoint = true;
-                else break;
-            }else if(!std::isdigit(*it) && ((*it!='f') || it+1 != input.end() || !decimalPoint)){
-                break;
-            }
-            ++it;
-        }
-        return input.size() > minSize && it == input.end();
-    }
 };
 
 
