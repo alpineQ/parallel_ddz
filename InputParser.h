@@ -11,8 +11,8 @@ class InputParser {
 public:
     vector<vector<pair<int, float>>> data;
     vector<bool> types; // true = int, false = float
-    size_t nSequences{}; // n
-    size_t sequenceLength{}; // m
+    int nSequences{}; // n
+    int sequenceLength{}; // m
 
     explicit InputParser(const string& filename) {
         ifstream inputFile(filename);
