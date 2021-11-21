@@ -2,11 +2,13 @@
 #include <vector>
 #include "CmdParser.h"
 #include "InputParser.h"
-#include "mpi.h"
+#include <mpi.h>
+#include <omp.h>
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
+    MPI_Init(&argc, &argv);
     CmdParser cmd(argc, argv);
     string inputFilename;
     bool testingMode;
@@ -37,7 +39,6 @@ int main(int argc, char* argv[]) {
     } else {
 
     }
-
     cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
     cout << "Filename: " << inputFilename << endl;
     cout << "Amount of sequences: " << nSequences << endl;
@@ -51,6 +52,7 @@ int main(int argc, char* argv[]) {
                 cout << data[i][j].second << " ";
         cout << endl;
     }
+    MPI_Finalize();
 
     return 0;
 }

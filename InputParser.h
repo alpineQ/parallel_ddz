@@ -11,10 +11,10 @@ class InputParser {
 public:
     vector<vector<pair<int, float>>> data;
     vector<bool> types; // true = int, false = float
-    size_t nSequences; // n
-    size_t sequenceLength; // m
+    size_t nSequences{}; // n
+    size_t sequenceLength{}; // m
 
-    InputParser(const string& filename) {
+    explicit InputParser(const string& filename) {
         ifstream inputFile(filename);
         if (!inputFile.is_open())
             throw runtime_error("Unable to open file '" + filename +"'");
