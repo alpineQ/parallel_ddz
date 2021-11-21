@@ -1,5 +1,5 @@
-#ifndef PARALLEL_DDZ_CPP_CMDPARSER_H
-#define PARALLEL_DDZ_CPP_CMDPARSER_H
+#ifndef PARALLEL_DDZ_CPP_CMD_PARSER_H
+#define PARALLEL_DDZ_CPP_CMD_PARSER_H
 
 #include <string>
 #include <unordered_map>
@@ -30,7 +30,7 @@ public:
         return tokens.find(option) != tokens.end();
     }
 
-    bool getMode() {
+    bool getMode() const {
         if (optionExists("-n") && optionExists("-m") && !optionExists("-f")) {
             return false;
         }
@@ -42,4 +42,4 @@ public:
     }
 };
 
-#endif //PARALLEL_DDZ_CPP_CMDPARSER_H
+#endif //PARALLEL_DDZ_CPP_CMD_PARSER_H

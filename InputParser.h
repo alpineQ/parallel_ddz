@@ -1,5 +1,5 @@
-#ifndef PARALLEL_DDZ_CPP_INPUTPARSER_H
-#define PARALLEL_DDZ_CPP_INPUTPARSER_H
+#ifndef PARALLEL_DDZ_CPP_INPUT_PARSER_H
+#define PARALLEL_DDZ_CPP_INPUT_PARSER_H
 
 #include <string>
 #include <fstream>
@@ -45,4 +45,4 @@ public:
 };
 
 
-#endif //PARALLEL_DDZ_CPP_INPUTPARSER_H
+#endif //PARALLEL_DDZ_CPP_INPUT_PARSER_H
