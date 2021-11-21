@@ -4,44 +4,41 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include "SequenceData.h"
 
 using namespace std;
 
 class InputParser {
 public:
-    vector<vector<pair<int, float>>> data;
-    vector<bool> types; // true = int, false = float
-    int nSequences{}; // n
-    int sequenceLength{}; // m
-
+    SequenceData data;
     explicit InputParser(const string& filename) {
         ifstream inputFile(filename);
         if (!inputFile.is_open())
             throw runtime_error("Unable to open file '" + filename +"'");
-        inputFile >> nSequences;
-        inputFile >> sequenceLength;
-        data.reserve(nSequences);
-        types.reserve(nSequences);
+        inputFile >> data.nSequences;
+        inputFile >> data.sequenceLength;
+        data.sequences.reserve(data.nSequences);
+        data.types.reserve(data.nSequences);
 
         auto dataPosition = inputFile.tellg();
 
         for (std::string line; std::getline(inputFile, line); ) {
             if (line.empty())
                 continue;
-            types.push_back(line.find(',') == -1 && line.find('.') == -1);
-            data.emplace_back();
+            data.types.push_back(line.find(',') == -1 && line.find('.') == -1);
+            data.sequences.emplace_back();
         }
         inputFile.clear();
         inputFile.seekg(dataPosition);
 
-        for (unsigned i = 0; i < nSequences; ++i)
-            for (unsigned j = 0; j < sequenceLength; ++j) {
+        for (unsigned i = 0; i < data.nSequences; ++i)
+            for (unsigned j = 0; j < data.sequenceLength; ++j) {
                 pair<int, float> value;
-                if (types[i])
+                if (data.types[i])
                     inputFile >> value.first;
                 else
                     inputFile >> value.second;
-                data[i].push_back(value);
+                data.sequences[i].push_back(value);
             }
         inputFile.close();
     }

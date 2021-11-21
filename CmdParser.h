@@ -29,6 +29,17 @@ public:
     bool optionExists(const string& option) const {
         return tokens.find(option) != tokens.end();
     }
+
+    bool getMode() {
+        if (optionExists("-n") && optionExists("-m") && !optionExists("-f")) {
+            return false;
+        }
+        if (!optionExists("-n") && !optionExists("-m") && optionExists("-f")) {
+            return true;
+        }
+        cerr << "Invalid arguments" << endl;
+        exit(-1);
+    }
 };
 
 #endif //PARALLEL_DDZ_CPP_CMDPARSER_H
