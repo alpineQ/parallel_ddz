@@ -11,13 +11,13 @@
 
 using namespace std;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     int sequenceLength; // m
     int nSequences; // n
-    int* sendData;
+    int *sendData;
 
     if (rank == ROOT_RANK) {
         CmdParser cmd(argc, argv);
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
         } else {
             random_device rd;     // only used once to initialise (seed) engine
             mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-            uniform_int_distribution<int> uni(INT_MIN, INT_MAX); // guaranteed unbiased
+            uniform_int_distribution<int> uni(floor(INT_MIN / 8), floor(INT_MAX / 8)); // guaranteed unbiased
             for (unsigned i = 0; i < nSequences; ++i) {
                 data.emplace_back();
                 types.push_back(true);
@@ -69,27 +69,44 @@ int main(int argc, char* argv[]) {
                     cout << data[i][j].second << " ";
             cout << endl;
         }
-        sendData = new int[nSequences*sequenceLength];
+        sendData = new int[nSequences * sequenceLength];
         for (unsigned i = 0; i < nSequences; ++i)
             for (unsigned j = 0; j < sequenceLength; ++j)
-                sendData[i*sequenceLength + j] = data[i][j].first;
+                sendData[i * sequenceLength + j] = data[i][j].first;
     }
-    MPI_Bcast(&sequenceLength,1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+    MPI_Bcast(&sequenceLength, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
 
-    int* recvData = new int[sequenceLength];
+    int *recvData = new int[sequenceLength];
     MPI_Scatter(sendData, sequenceLength, MPI_INT, recvData,
                 sequenceLength, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    cout << "Process " << rank << ": data is ";
+    if (rank == ROOT_RANK)
+        delete[] sendData;
+
+    cout << "Process " << rank << ": source data is ";
     for (unsigned i = 0; i < sequenceLength; ++i)
         cout << recvData[i] << " ";
     cout << endl;
 
+    omp_set_num_threads(int(log2(sequenceLength)));
+    #pragma omp parallel for default(none) firstprivate(sequenceLength) shared(recvData) shared(cout)
     for (unsigned i = 0; i < sequenceLength; ++i) {
-
+        int *Q = new int[sequenceLength];
+        for (unsigned j = 0; j < sequenceLength; ++j)
+            Q[j] = 0;
+        int shift = int(pow(2, i));
+        for (unsigned j = 0; j < sequenceLength; ++j)
+            Q[j] = (j < shift) ? 0 : recvData[j - shift];
+        for (unsigned j = 0; j < sequenceLength; ++j)
+            recvData[j] += Q[j];
+        delete[] Q;
     }
+    cout << "Process " << rank << ": result data is ";
+    for (unsigned i = 0; i < sequenceLength; ++i)
+        cout << recvData[i] << " ";
+    cout << endl;
 
+    delete[] recvData;
     MPI_Finalize();
     return 0;
 }
