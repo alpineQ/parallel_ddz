@@ -14,7 +14,6 @@ class InputParser {
             for (size_t j = 0; j < m; ++j) {
                 string value;
                 inputFile >> value;
-                value
             }
         }
     }

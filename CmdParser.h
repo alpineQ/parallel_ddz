@@ -2,32 +2,33 @@
 #define PARALLEL_DDZ_CPP_CMDPARSER_H
 
 #include <string>
-#include <vector>
+#include <unordered_map>
 #include <algorithm>
 
 using namespace std;
 
 class CmdParser {
 private:
-    vector<string> tokens;
+    unordered_map<string, string> tokens;
 public:
-    CmdParser(int &argc, char **argv) {
+    CmdParser(int argc, char **argv) {
         for (int i = 1; i < argc; ++i)
-            this->tokens.emplace_back(argv[i]);
+            if (argv[i][0] == '-') {
+                const string key = argv[i];
+                const string value = argv[++i];
+                tokens[key] = value;
+            }
+            else {
+                throw invalid_argument(argv[i]);
+            }
     }
 
-    const string &getCmdOption(const string &option) const {
-        auto itr = find(this->tokens.begin(), this->tokens.end(), option);
-        if (itr != this->tokens.end() && ++itr != this->tokens.end()) {
-            return *itr;
-        }
-        static const string empty_string;
-        return empty_string;
+    string getOption(const string& option) const {
+        return tokens.at(option);
     }
 
-    bool cmdOptionExists(const string &option) const {
-        return find(this->tokens.begin(), this->tokens.end(), option)
-               != this->tokens.end();
+    bool optionExists(const string& option) const {
+        return tokens.find(option) != tokens.end();
     }
 };
 
