@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(parallel_ddz)
+project(partial_sum)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(OpenMP REQUIRED)
@@ -10,6 +10,6 @@ set(MPI_GUESS_LIBRARY_NAME MPICH2)
 
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
-add_executable(main main.cpp CmdParser.h InputParser.h SequenceData.h)
-target_link_libraries(main PUBLIC MPI::MPI_CXX)
-target_link_libraries(main PUBLIC OpenMP::OpenMP_CXX)
+add_executable(partial_sum main.cpp CmdParser.h Sequence.cpp Sequence.h InputData.cpp InputData.h)
+target_link_libraries(partial_sum PUBLIC MPI::MPI_CXX)
+target_link_libraries(partial_sum PUBLIC OpenMP::OpenMP_CXX)

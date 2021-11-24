@@ -16,10 +16,8 @@ public:
                 const string key = argv[i];
                 const string value = argv[++i];
                 tokens[key] = value;
-            }
-            else {
+            } else
                 throw invalid_argument(argv[i]);
-            }
     }
 
     string getOption(const string& option) const {
@@ -31,14 +29,11 @@ public:
     }
 
     bool getMode() const {
-        if (optionExists("-n") && optionExists("-m") && !optionExists("-f")) {
+        if (optionExists("-n") && optionExists("-m") && !optionExists("-f"))
             return false;
-        }
-        if (!optionExists("-n") && !optionExists("-m") && optionExists("-f")) {
+        if (!optionExists("-n") && !optionExists("-m") && optionExists("-f"))
             return true;
-        }
-        cerr << "Invalid arguments" << endl;
-        exit(-1);
+        throw invalid_argument("Invalid arguments");
     }
 };
 

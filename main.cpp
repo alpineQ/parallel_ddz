@@ -1,118 +1,131 @@
 #include <iostream>
-#include <vector>
-#include <random>
-#include <bits/stdc++.h>
 #include <mpi.h>
 #include <omp.h>
+#include <bits/stdc++.h>
 #include "CmdParser.h"
-#include "InputParser.h"
-#include "SequenceData.h"
+#include "InputData.h"
 
 #define ROOT_RANK 0
 
 using namespace std;
 
-void generateSequences(SequenceData &data) {
-    random_device rd;     // only used once to initialise (seed) engine
-    mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-    uniform_int_distribution<int> uni(floor(INT_MIN / 8), floor(INT_MAX / 8)); // guaranteed unbiased
-    for (unsigned i = 0; i < data.nSequences; ++i) {
-        data.sequences.emplace_back();
-        data.types.push_back(true);
-        for (unsigned j = 0; j < data.sequenceLength; ++j)
-            data.sequences[i].push_back(pair(uni(rng), 0.0f));
-    }
-}
-
-int* prepareData(int argc, char *argv[], int &sequenceLength) {
+Sequence prepareData(int argc, char *argv[]) {
     CmdParser cmd(argc, argv);
     string inputFilename;
     bool testingMode;
-    int *sendData;
-    SequenceData data;
+    InputData data;
 
-    testingMode = cmd.getMode();
+    try {
+        testingMode = cmd.getMode();
+    } catch (invalid_argument &error) {
+        cerr << error.what();
+        MPI_Finalize();
+        exit(-1);
+    }
+
     if (testingMode) {
         inputFilename = cmd.getOption("-f");
-        data = InputParser(inputFilename).data;
-    } else {
-        data.nSequences = stoi(cmd.getOption("-n"));
-        data.sequenceLength = stoi(cmd.getOption("-m"));
-        generateSequences(data);
-    }
-    sequenceLength = data.sequenceLength;
+        data.loadFromFile(inputFilename);
+    } else
+        data.generateData(stoi(cmd.getOption("-n")),
+                          stoi(cmd.getOption("-m")),
+                          true);
 
-    cout << (testingMode ? "Testing mode" : "Experiment mode") << endl;
+    cout << (testingMode ? "Testing" : "Experiment") << " mode" << endl;
     if (testingMode)
         cout << "Filename: " << inputFilename << endl;
-    cout << "Amount of sequences: " << data.nSequences << endl;
-    cout << "Sequence length: " << data.sequenceLength << endl;
-    cout << "Data:" << endl;
     data.print();
-    sendData = new int[data.nSequences * sequenceLength];
-    for (unsigned i = 0; i < data.nSequences * data.sequenceLength; ++i)
-        sendData[i / data.sequenceLength + i % data.sequenceLength] = data.sequences[i / data.sequenceLength][i % data.sequenceLength].first;
-    MPI_Bcast(&sequenceLength, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
-    int *recvData = new int[sequenceLength];
-    MPI_Scatter(sendData, sequenceLength, MPI_INT, recvData,
-                sequenceLength, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
-    delete[] sendData;
-    return recvData;
+
+    MPI_Bcast(&data.sequenceLength, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+    bool* types = new bool[data.nSequences];
+    for (unsigned i = 0; i < data.nSequences; ++i)
+        types[i] = data.sequences[i].type;
+    MPI_Scatter(types,
+                data.nSequences,
+                MPI_CXX_BOOL,
+                &data.sequences[0].type,
+                1,
+                MPI_CXX_BOOL,
+                ROOT_RANK,
+                MPI_COMM_WORLD);
+    delete[] types;
+    for (int i = 1; i < data.nSequences; ++i) {
+        MPI_Request request;
+        MPI_Isend(data.sequences[i].data,
+                  data.sequenceLength,
+                  (data.sequences[i].type)?MPI_INT:MPI_FLOAT,
+                  i,
+                  0,
+                  MPI_COMM_WORLD,
+                  &request);
+    }
+    return data.sequences[0];
 }
 
-int* getDataFromRoot(int &sequenceLength) {
-    int *recvData;
-    MPI_Bcast(&sequenceLength, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
-    recvData = new int[sequenceLength];
-    MPI_Scatter(nullptr, sequenceLength, MPI_INT, recvData,
-                sequenceLength, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
-    return recvData;
+Sequence getDataFromRoot() {
+    int sequenceLength;
+    bool dataType;
+
+    MPI_Bcast(&sequenceLength,
+              1,
+              MPI_INT,
+              ROOT_RANK,
+              MPI_COMM_WORLD);
+    MPI_Scatter(nullptr,
+                0,
+                MPI_CXX_BOOL,
+                &dataType,
+                1,
+                MPI_CXX_BOOL,
+                ROOT_RANK,
+                MPI_COMM_WORLD);
+    Sequence sequence(sequenceLength, dataType);
+
+    MPI_Status status;
+    MPI_Recv(sequence.data,
+             sequenceLength,
+             (dataType)?MPI_INT:MPI_FLOAT, ROOT_RANK,
+             0,
+             MPI_COMM_WORLD,
+             &status);
+    return sequence;
 }
 
-void partialSum(int* data, int sequenceLength) {
-    omp_set_num_threads(int(log2(sequenceLength)));
-    #pragma omp parallel for default(none) firstprivate(sequenceLength) shared(data) shared(cout)
-    for (unsigned i = 0; i < sequenceLength; ++i) {
-        int *Q = new int[sequenceLength];
-        for (unsigned j = 0; j < sequenceLength; ++j)
-            Q[j] = 0;
+void partialSum(Sequence sequence) {
+    omp_set_num_threads(int(log2(sequence.length)));
+    #pragma omp parallel for default(none) shared(sequence)
+    for (unsigned i = 0; i < sequence.length; ++i) {
         int shift = int(pow(2, i));
-        for (unsigned j = 0; j < sequenceLength; ++j)
-            Q[j] = (j < shift) ? 0 : data[j - shift];
-        for (unsigned j = 0; j < sequenceLength; ++j)
-            data[j] += Q[j];
-        delete[] Q;
+        Sequence Q = sequence.shiftRight(shift);
+        sequence += Q;
+        Q.free();
     }
 }
 
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     int rank;
-    int sequenceLength;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    int *data;
+    Sequence sequence;
 
     if (rank == ROOT_RANK)
-        data = prepareData(argc, argv, sequenceLength);
+        sequence = prepareData(argc, argv);
     else
-        data = getDataFromRoot(sequenceLength);
-
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    cout << "Process " << rank << ": source sequences is ";
-    for (unsigned i = 0; i < sequenceLength; ++i)
-        cout << data[i] << " ";
-    cout << endl;
-
-    partialSum(data, sequenceLength);
+        sequence = getDataFromRoot();
 
     MPI_Barrier(MPI_COMM_WORLD);
-    cout << "Process " << rank << ": result sequences is ";
-    for (unsigned i = 0; i < sequenceLength; ++i)
-        cout << data[i] << " ";
+    cout << "Process " << rank << " (input): ";
+    sequence.print();
     cout << endl;
 
-    delete[] data;
+    partialSum(sequence);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    cout << "Process " << rank << " (output): ";
+    sequence.print();
+    cout << endl;
+
+    sequence.free();
     MPI_Finalize();
     return 0;
 }
