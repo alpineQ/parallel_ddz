@@ -9,10 +9,10 @@ public:
     bool type;
 
     Sequence();
+    ~Sequence();
     Sequence(int length, bool type);
     void generate() const;
     void print() const;
-    void free() const;
     Sequence shiftRight(int shift) const;
     Sequence operator+=(const Sequence& other);
 };
