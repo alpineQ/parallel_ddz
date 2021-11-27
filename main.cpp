@@ -81,6 +81,7 @@ int main(int argc, char *argv[]) {
             for (const Sequence &sequence: sequences) {
                 cout << "Process " << rank << " (output): ";
                 sequence.print();
+                sequence.free();
             }
         MPI_Barrier(MPI_COMM_WORLD);
     }

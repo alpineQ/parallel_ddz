@@ -9,7 +9,7 @@ public:
     bool type;
 
     Sequence();
-    ~Sequence();
+    void free() const;
     Sequence(int length, bool type);
     void generate() const;
     void print() const;

@@ -10,13 +10,6 @@ Sequence::Sequence() {
     data = nullptr;
 }
 
-Sequence::~Sequence() {
-    if (type)
-        delete[] (int *) data;
-    else
-        delete[] (float *) data;
-}
-
 Sequence::Sequence(int length, bool type) {
     this->length = length;
     this->type = type;
@@ -24,6 +17,13 @@ Sequence::Sequence(int length, bool type) {
         data = new int[length];
     else
         data = new float[length];
+}
+
+void Sequence::free() const {
+    if (type)
+        delete[] (int *) data;
+    else
+        delete[] (float *) data;
 }
 
 void Sequence::generate() const {
