@@ -31,7 +31,6 @@ vector<Sequence> prepareData(int argc, char *argv[]) {
         input.generateData(stoi(cmd.getOption("-n")),
                            stoi(cmd.getOption("-m")),
                            true);
-
     cout << (testingMode ? "Testing" : "Experiment") << " mode" << endl;
     if (testingMode)
         cout << "Filename: " << inputFilename << endl;
@@ -57,6 +56,8 @@ void partialSum(Sequence sequence) {
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     int rank;
+    int nProcesses;
+    MPI_Comm_size(MPI_COMM_WORLD, &nProcesses);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     vector<Sequence> sequences;
 
@@ -64,19 +65,24 @@ int main(int argc, char *argv[]) {
         sequences = prepareData(argc, argv);
     else
         sequences = getDataFromRoot();
-
-    for (const Sequence &sequence: sequences) {
-        cout << "Process " << rank << " (input): ";
-        sequence.print();
+    for (unsigned i = 0; i < nProcesses; ++i) {
+        if (rank == i)
+            for (const Sequence &sequence: sequences) {
+                cout << "Process " << rank << " (input): ";
+                sequence.print();
+            }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
-
     for (const Sequence &sequence: sequences)
         partialSum(sequence);
 
-    // MPI_Barrier(MPI_COMM_WORLD);
-    for (const Sequence &sequence: sequences) {
-        cout << "Process " << rank << " (output): ";
-        sequence.print();
+    for (unsigned i = 0; i < nProcesses; ++i) {
+        if (rank == i)
+            for (const Sequence &sequence: sequences) {
+                cout << "Process " << rank << " (output): ";
+                sequence.print();
+            }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
     MPI_Finalize();
     return 0;
