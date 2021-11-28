@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <iostream>
 #include "DataSharing.h"
 #include "InputData.h"
 
@@ -42,7 +43,7 @@ bool* recvTypes(int nSequences) {
 vector<Sequence> sendData(const int* dataPerProcess, InputData input) {
     vector<Sequence> rootData;
     for (int process = 0, sequence = 0; sequence < input.nSequences; ++process) {
-        MPI_Request request;
+        MPI_Request request = MPI_REQUEST_NULL;
         for (int i = 0; i < dataPerProcess[process]; ++i, ++sequence) {
             if (process == ROOT_RANK)
                 rootData.push_back(input.sequences[sequence]);
@@ -62,16 +63,14 @@ vector<Sequence> sendData(const int* dataPerProcess, InputData input) {
 vector<Sequence> recvData(int nSequences, int sequenceLength, const bool* types) {
     vector<Sequence> sequences;
     for (int i = 0; i < nSequences; ++i) {
-        Sequence sequence(sequenceLength, types[i]);
-        MPI_Status status;
-        MPI_Recv(sequence.data,
+        sequences.emplace_back(sequenceLength, types[i]);
+        MPI_Recv(sequences[i].data,
                  sequenceLength,
                  (types[i]) ? MPI_INT : MPI_FLOAT,
                  ROOT_RANK,
                  i,
                  MPI_COMM_WORLD,
-                 &status);
-        sequences.push_back(sequence);
+                 MPI_STATUS_IGNORE);
     }
     return sequences;
 }

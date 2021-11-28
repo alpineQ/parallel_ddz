@@ -18,8 +18,8 @@ void InputData::loadFromFile(const string &filename) {
     ifstream inputFile(filename);
     if (!inputFile.is_open())
         throw runtime_error("Unable to open file '" + filename + "'");
-    inputFile >> nSequences;
     inputFile >> sequenceLength;
+    inputFile >> nSequences;
     sequences.reserve(nSequences);
 
     auto dataPosition = inputFile.tellg();
