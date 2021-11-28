@@ -1,14 +1,12 @@
 #include <mpi.h>
-#include <iostream>
 #include "DataSharing.h"
-#include "InputData.h"
 
 #define ROOT_RANK 0
 
 
 void sendTypes(int nProcesses, int* dataPerProcess, InputData input) {
-    bool *types = new bool[nProcesses];
-    int *displacements = new int[nProcesses];
+    bool *types = safeAllocate<bool>(nProcesses);
+    int *displacements = safeAllocate<int>(nProcesses);
     for (unsigned i = 0; i < nProcesses; ++i) {
         types[i] = input.sequences[i].type;
         displacements[i] = 0;
@@ -27,7 +25,7 @@ void sendTypes(int nProcesses, int* dataPerProcess, InputData input) {
 }
 
 bool* recvTypes(int nSequences) {
-    bool *types = new bool[nSequences];
+    bool *types = safeAllocate<bool>(nSequences);
     MPI_Scatterv(nullptr,
                  nullptr,
                  nullptr,

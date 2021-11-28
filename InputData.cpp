@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <mpi.h>
+#include <cstring>
 #include "InputData.h"
 
 using namespace std;
@@ -16,8 +18,12 @@ void InputData::generateData(int n, int m, bool type) {
 
 void InputData::loadFromFile(const string &filename) {
     ifstream inputFile(filename);
-    if (!inputFile.is_open())
-        throw runtime_error("Unable to open file '" + filename + "'");
+    if (inputFile.fail()) {
+        cerr << "File open error: " << strerror(errno) << endl;
+        MPI_Abort(MPI_COMM_WORLD, -4);
+        MPI_Finalize();
+        exit(-4);
+    }
     inputFile >> sequenceLength;
     inputFile >> nSequences;
     sequences.reserve(nSequences);
@@ -33,28 +39,33 @@ void InputData::loadFromFile(const string &filename) {
     inputFile.seekg(dataPosition);
 
     for (unsigned i = 0; i < nSequences; ++i)
-        for (unsigned j = 0; j < sequenceLength; ++j)
-            if (sequences[i].type)
-                inputFile >> ((int *) sequences[i].data)[j];
-            else
-                inputFile >> ((float *) sequences[i].data)[j];
+        for (unsigned j = 0; j < sequenceLength; ++j) {
+            string value;
+            inputFile >> value;
+            try {
+                for (char c: value)
+                    if (!isdigit(c) && c != '-' && (sequences[i].type || c != ',' && c != '.' && !sequences[i].type))
+                        throw invalid_argument("Invalid symbol");
+                if (sequences[i].type)
+                    ((int *) sequences[i].data)[j] = stoi(value);
+                else
+                    ((float *) sequences[i].data)[j] = stof(value);
+            } catch (invalid_argument &error) {
+                cerr << "Invalid data format: " << i + 1 << " " << j + 1 << endl;
+                inputFile.close();
+                MPI_Abort(MPI_COMM_WORLD, -7);
+                MPI_Finalize();
+                exit(-7);
+            }
+        }
     inputFile.close();
-
 }
 int* InputData::getDataPerProcess(int nProcesses) const {
-    int* dataPerProcess = new int[nProcesses];
+    int *dataPerProcess = safeAllocate<int>(nProcesses);
 	for (unsigned i = 0; i < nProcesses; ++i)
 		if (nSequences % nProcesses == 0)
 			dataPerProcess[i] = nSequences / nProcesses;
 		else
 			dataPerProcess[i] = nSequences / nProcesses + ((i < nSequences % nProcesses) ? 1 : 0);
 	return dataPerProcess;
-}
-
-void InputData::print() {
-    cout << "Amount of sequences: " << nSequences << endl;
-    cout << "Sequence length: " << sequenceLength << endl;
-    cout << "Data:" << endl;
-    for (unsigned i = 0; i < nSequences; ++i)
-        sequences[i].print();
 }

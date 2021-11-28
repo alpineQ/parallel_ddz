@@ -4,19 +4,13 @@
 
 using namespace std;
 
-Sequence::Sequence() {
-    length = 0;
-    type = true;
-    data = nullptr;
-}
-
 Sequence::Sequence(int length, bool type) {
     this->length = length;
     this->type = type;
     if (type)
-        data = new int[length];
+        data = safeAllocate<int>(length);
     else
-        data = new float[length];
+        data = safeAllocate<float>(length);
 }
 
 void Sequence::free() const {

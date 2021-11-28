@@ -1,8 +1,9 @@
 #ifndef PARALLEL_DDZ_CPP_CMD_PARSER_H
 #define PARALLEL_DDZ_CPP_CMD_PARSER_H
 
-#include <string>
+#include <iostream>
 #include <unordered_map>
+#include <mpi.h>
 
 using namespace std;
 
@@ -28,9 +29,35 @@ public:
     bool getMode() const {
         if (optionExists("-n") && optionExists("-m") && !optionExists("-f"))
             return false;
-        if (!optionExists("-n") && !optionExists("-m") && optionExists("-f"))
-            return true;
-        throw invalid_argument("Invalid arguments");
+        return true;
+    }
+    void checkArguments() const {
+        int n = -1;
+        int m = -1;
+        if (optionExists("-n") && optionExists("-m")) {
+            for (char c: getOption("-n"))
+                if (!isdigit(c)) {
+                    cerr << "Invalid sequence length" << endl;
+                    MPI_Abort(MPI_COMM_WORLD, -2);
+                    MPI_Finalize();
+                    exit(-2);
+                }
+            for (char c: getOption("-m"))
+                if (!isdigit(c)) {
+                    cerr << "Invalid amount of sequences" << endl;
+                    MPI_Abort(MPI_COMM_WORLD, -3);
+                    MPI_Finalize();
+                    exit(-3);
+                }
+            n = stoi(getOption("-n"));
+            m = stoi(getOption("-m"));
+        }
+        if ((n < 0 || m < 0 ) && !optionExists("-f")) {
+            cerr << "Invalid parameters" << endl;
+            MPI_Abort(MPI_COMM_WORLD, -1);
+            MPI_Finalize();
+            exit(-1);
+        }
     }
 };
 

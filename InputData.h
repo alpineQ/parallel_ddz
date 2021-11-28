@@ -16,7 +16,6 @@ public:
     void loadFromFile(const string &filename);
     void generateData(int n, int m, bool type);
 	int* getDataPerProcess(int nProcesses) const;
-    void print();
 };
 
 
