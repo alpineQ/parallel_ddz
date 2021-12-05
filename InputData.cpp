@@ -1,12 +1,28 @@
+/**
+ * InputData.cpp
+ *
+ * Вспомогательный класс InputData, упрощающий работу с
+ * входными данными (векторами последовательностей)
+ * Автор: Казанцев М.А., 2021 г.
+ *
+ */
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
-#include <mpi.h>
 #include <cstring>
 #include "InputData.h"
 
 using namespace std;
 
+/**
+ * Заполнение последовательностей случайными значениями
+ *
+ * @param n – число последовательностей
+ * @param m – длина последовательности
+ * @param type – тип данных последовательностей:
+ *             - true - для целочисленных значений,
+ *             - false - для значений с плавающей точкой
+ */
 void InputData::generateData(int n, int m, bool type) {
     this->nSequences = n;
     this->sequenceLength = m;
@@ -16,13 +32,17 @@ void InputData::generateData(int n, int m, bool type) {
     }
 }
 
-void InputData::loadFromFile(const string &filename) {
+/**
+ * Заполнение последовательностей данными из входного файла
+ *
+ * @param filename – имя входного файла с последовательностями
+ * @returns Код ошибки, в случае нормальной работы возвращает 0
+ */
+int InputData::loadFromFile(const string &filename) {
     ifstream inputFile(filename);
     if (inputFile.fail()) {
         cerr << "File open error: " << strerror(errno) << endl;
-        MPI_Abort(MPI_COMM_WORLD, -4);
-        MPI_Finalize();
-        exit(-4);
+        return -4;
     }
     inputFile >> sequenceLength;
     inputFile >> nSequences;
@@ -53,19 +73,25 @@ void InputData::loadFromFile(const string &filename) {
             } catch (invalid_argument &error) {
                 cerr << "Invalid data format: " << i + 1 << " " << j + 1 << endl;
                 inputFile.close();
-                MPI_Abort(MPI_COMM_WORLD, -7);
-                MPI_Finalize();
-                exit(-7);
+                return -7;
             }
         }
     inputFile.close();
+    return 0;
 }
+
+/**
+ * Равномерное распределение количества входных последовательностей между процессами
+ *
+ * @param nProcesses – число MPI-процессов
+ * @returns массив отражающий распределение последовательностей по MPI-процессам
+ */
 int* InputData::getDataPerProcess(int nProcesses) const {
     int *dataPerProcess = safeAllocate<int>(nProcesses);
-	for (unsigned i = 0; i < nProcesses; ++i)
-		if (nSequences % nProcesses == 0)
-			dataPerProcess[i] = nSequences / nProcesses;
-		else
-			dataPerProcess[i] = nSequences / nProcesses + ((i < nSequences % nProcesses) ? 1 : 0);
+	for (unsigned i = 0; i < nProcesses; ++i) {
+        dataPerProcess[i] = nSequences / nProcesses;
+        if (nSequences % nProcesses != 0 && i < nSequences % nProcesses)
+            ++dataPerProcess[i];
+    }
 	return dataPerProcess;
 }

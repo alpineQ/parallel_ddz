@@ -1,10 +1,10 @@
-/*–––––––––––––––––––––––––––––––––––––----––––––––––––––––––*/
-/* InputData.h                                               */
-/*                                                           */
-/* Заголовочный файл класса InputData                        */
-/* Автор: Казанцев М.А., 2021 г.                             */
-/*                                                           */
-/* –––––––––––––––––––––––––––––––––––––---––––––––––––––––––*/
+/**
+ * InputData.h
+ *
+ * Заголовочный файл класса InputData
+ * Автор: Казанцев М.А., 2021 г.
+ *
+ */
 #ifndef PARTIAL_SUM_INPUT_DATA_H
 #define PARTIAL_SUM_INPUT_DATA_H
 
@@ -20,7 +20,7 @@ public:
     int sequenceLength{}; // m
     int nSequences{}; // n
 	
-    void loadFromFile(const string &filename);
+    int loadFromFile(const string &filename);
     void generateData(int n, int m, bool type);
 	int* getDataPerProcess(int nProcesses) const;
 };

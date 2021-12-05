@@ -1,9 +1,22 @@
+/**
+ * DataSharing.h
+ *
+ * Файл вспомогательных функций передачи данных между MPI-процессами
+ * Автор: Казанцев М.А., 2021 г.
+ *
+ */
 #include <mpi.h>
 #include "DataSharing.h"
 
 #define ROOT_RANK 0
 
 
+/**
+ * Отправка типов данных последовательностей всем MPI-процессам
+ *
+ * @param nProcesses – число MPI-процессов
+ * @param dataPerProcess – массив распределения количества данных по процессам
+ */
 void sendTypes(int nProcesses, int* dataPerProcess, InputData input) {
     bool *types = safeAllocate<bool>(nProcesses);
     int *displacements = safeAllocate<int>(nProcesses);
@@ -24,6 +37,12 @@ void sendTypes(int nProcesses, int* dataPerProcess, InputData input) {
     delete[] displacements;
 }
 
+/**
+ * Принятие типов данных последовательностей MPI-процессом
+ *
+ * @param nSequences – число последовательностей
+ * @returns типы данных последовательностей
+ */
 bool* recvTypes(int nSequences) {
     bool *types = safeAllocate<bool>(nSequences);
     MPI_Scatterv(nullptr,
@@ -38,6 +57,13 @@ bool* recvTypes(int nSequences) {
     return types;
 }
 
+/**
+ * Отправка данных последовательностей всем MPI-процессам
+ *
+ * @param dataPerProcess – массив распределения количества данных по процессам
+ * @param input – данные последовательностей
+ * @returns данные последовательностей, предназначенные главному MPI-процессу
+ */
 vector<Sequence> sendData(const int* dataPerProcess, InputData input) {
     vector<Sequence> rootData;
     for (int process = 0, sequence = 0; sequence < input.nSequences; ++process) {
@@ -58,6 +84,14 @@ vector<Sequence> sendData(const int* dataPerProcess, InputData input) {
     return rootData;
 }
 
+/**
+ * Приём данных последовательностей MPI-процессом
+ *
+ * @param nSequences - число последовательностей
+ * @param sequenceLength – длина последовательностей
+ * @param types – типы данных последовательностей
+ * @returns данные последовательностей, предназначенные главному MPI-процессу
+ */
 vector<Sequence> recvData(int nSequences, int sequenceLength, const bool* types) {
     vector<Sequence> sequences;
     for (int i = 0; i < nSequences; ++i) {
@@ -73,6 +107,11 @@ vector<Sequence> recvData(int nSequences, int sequenceLength, const bool* types)
     return sequences;
 }
 
+/**
+ * Приём необходимых данных для решения задачи MPI-процессом
+ *
+ * @returns данные последовательностей
+ */
 vector<Sequence> getDataFromRoot() {
     int sequenceLength;
     int dataPerProcess;
@@ -96,6 +135,13 @@ vector<Sequence> getDataFromRoot() {
     return data;
 }
 
+/**
+ * Отправка всех необходимых данных для решения задачи всем MPI-процессам
+ *
+ * @param input – данные последовательностей
+ * @param nProcesses – число MPI-процессов
+ * @returns данные последовательностей, предназначенные главному MPI-процессу
+ */
 vector<Sequence> sendDataToProcesses(InputData input, int nProcesses) {
     int *dataPerProcess = input.getDataPerProcess(nProcesses);
     MPI_Bcast(&input.sequenceLength, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);

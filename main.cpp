@@ -1,11 +1,11 @@
-/*–––––––––––––––––––––––––––––––––––––----––––––––––––––––––*/
-/* main.cpp                                                  */
-/*                                                           */
-/* Программная реализация параллельного алгоритма нахождения */
-/* частных сумм	                                             */
-/* Автор: Казанцев М.А., 2021 г.                             */
-/*                                                           */
-/* –––––––––––––––––––––––––––––––––––––---––––––––––––––––––*/
+/**
+ * main.cpp
+ *
+ * Программная реализация параллельного алгоритма нахождения
+ * частных сумм
+ * Автор: Казанцев М.А., 2021 г.
+ *
+ */
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -20,17 +20,13 @@
 using namespace std;
 using namespace chrono;
 
-/*------------------------------------------------------------*
-Функция partialSum(Sequence sequence)
-Описание: Вычисление частных сумм последовательности sequence
-Параметры:
- sequence – заданная последовательность
-Возвращаемое значение:
- Нет
-Внешние эффекты:
- В переменную sequence записывается результат вычисления
- частных сумм
-*------------------------------------------------------------*/
+/**
+ * Вычисление частных сумм последовательности sequence
+ *
+ * @param sequence – заданная последовательность
+ * @note В переменную sequence записывается результат вычисления
+ * частных сумм
+ */
 void partialSum(Sequence sequence) {
 #pragma omp parallel for default(none) shared(sequence)
     for (unsigned i = 0; i < sequence.length; ++i) {
@@ -40,17 +36,13 @@ void partialSum(Sequence sequence) {
     }
 }
 
-/*------------------------------------------------------------*
-Функция main(int argc, char *argv[])
-Описание: Точка входа в программу
-Параметры:
- argc – количество аргументов командной строки
- argv – значения аргументов командной строки
-Возвращаемое значение:
- Код возврата (ошибки)
-Внешние эффекты:
- Нет
-*------------------------------------------------------------*/
+/**
+ * Точка входа в программу
+ *
+ * @param argc количество аргументов командной строки
+ * @param argv значения аргументов командной строки
+ * @return код возврата (ошибки)
+ */
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     int rank;
@@ -66,18 +58,29 @@ int main(int argc, char *argv[]) {
         flag = cmd.checkArguments();
         if (flag != 0) {
             MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+            MPI_Finalize();
             return flag;
         }
         InputData input;
-        if (cmd.getMode())
-            input.loadFromFile(cmd.getOption("-f"));
-        else
-            input.generateData(stoi(cmd.getOption("-n")), stoi(cmd.getOption("-m")), true);
+        if (cmd.getMode()) {
+            flag = input.loadFromFile(cmd.getOption("-f"));
+            if (flag != 0) {
+                MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+                MPI_Finalize();
+                return flag;
+            }
+        } else
+            input.generateData(stoi(cmd.getOption("-n")),
+                               stoi(cmd.getOption("-m")),
+                               true);
+        MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
         sequences = sendDataToProcesses(input, nProcesses);
     } else {
         MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
-        if (flag != 0)
+        if (flag != 0) {
+            MPI_Finalize();
             return flag;
+        }
         sequences = getDataFromRoot();
     }
 
@@ -103,7 +106,8 @@ int main(int argc, char *argv[]) {
         unsigned ms = duration_cast<milliseconds>(end - begin).count();
         double delta = sec + double(ms) / 1000;
         double maxDelta;
-        MPI_Reduce(&delta, &maxDelta, 1, MPI_DOUBLE, MPI_MAX, ROOT_RANK, MPI_COMM_WORLD);
+        MPI_Reduce(&delta, &maxDelta, 1, MPI_DOUBLE,
+                   MPI_MAX, ROOT_RANK, MPI_COMM_WORLD);
         cout << "Elapsed time: " << maxDelta << " seconds" << endl;
     }
 
