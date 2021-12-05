@@ -1,3 +1,11 @@
+/*–––––––––––––––––––––––––––––––––––––----––––––––––––––––––*/
+/* main.cpp                                                  */
+/*                                                           */
+/* Программная реализация параллельного алгоритма нахождения */
+/* частных сумм	                                             */
+/* Автор: Казанцев М.А., 2021 г.                             */
+/*                                                           */
+/* –––––––––––––––––––––––––––––––––––––---––––––––––––––––––*/
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -12,6 +20,17 @@
 using namespace std;
 using namespace chrono;
 
+/*------------------------------------------------------------*
+Функция partialSum(Sequence sequence)
+Описание: Вычисление частных сумм последовательности sequence
+Параметры:
+ sequence – заданная последовательность
+Возвращаемое значение:
+ Нет
+Внешние эффекты:
+ В переменную sequence записывается результат вычисления
+ частных сумм
+*------------------------------------------------------------*/
 void partialSum(Sequence sequence) {
 #pragma omp parallel for default(none) shared(sequence)
     for (unsigned i = 0; i < sequence.length; ++i) {
@@ -21,6 +40,17 @@ void partialSum(Sequence sequence) {
     }
 }
 
+/*------------------------------------------------------------*
+Функция main(int argc, char *argv[])
+Описание: Точка входа в программу
+Параметры:
+ argc – количество аргументов командной строки
+ argv – значения аргументов командной строки
+Возвращаемое значение:
+ Код возврата (ошибки)
+Внешние эффекты:
+ Нет
+*------------------------------------------------------------*/
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     int rank;
@@ -31,16 +61,26 @@ int main(int argc, char *argv[]) {
     CmdParser cmd(argc, argv);
     vector<Sequence> sequences;
 
+    int flag;
     if (rank == ROOT_RANK) {
-        cmd.checkArguments();
+        flag = cmd.checkArguments();
+        if (flag != 0) {
+            MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+            return flag;
+        }
         InputData input;
         if (cmd.getMode())
             input.loadFromFile(cmd.getOption("-f"));
         else
             input.generateData(stoi(cmd.getOption("-n")), stoi(cmd.getOption("-m")), true);
         sequences = sendDataToProcesses(input, nProcesses);
-    } else
+    } else {
+        MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+        if (flag != 0)
+            return flag;
         sequences = getDataFromRoot();
+    }
+
 
     steady_clock::time_point begin, end;
 
@@ -62,18 +102,9 @@ int main(int argc, char *argv[]) {
         unsigned sec = duration_cast<seconds>(end - begin).count();
         unsigned ms = duration_cast<milliseconds>(end - begin).count();
         double delta = sec + double(ms) / 1000;
-        if (rank == ROOT_RANK) {
-            double *deltas;
-            deltas = safeAllocate<double>(nProcesses);
-            MPI_Gather(&delta, 1, MPI_DOUBLE, deltas, nProcesses, MPI_DOUBLE, ROOT_RANK, MPI_COMM_WORLD);
-            double max_delta = 0;
-            for(int i = 0; i < nProcesses; ++i)
-                if (deltas[i] > max_delta)
-                    max_delta = deltas[i];
-            cout << "Elapsed time: " << setprecision(1) << max_delta << " seconds" << endl;
-            delete[] deltas;
-        } else
-            MPI_Gather(&delta, 1, MPI_DOUBLE, nullptr, 0, MPI_DOUBLE, ROOT_RANK, MPI_COMM_WORLD);
+        double maxDelta;
+        MPI_Reduce(&delta, &maxDelta, 1, MPI_DOUBLE, MPI_MAX, ROOT_RANK, MPI_COMM_WORLD);
+        cout << "Elapsed time: " << maxDelta << " seconds" << endl;
     }
 
     MPI_Finalize();

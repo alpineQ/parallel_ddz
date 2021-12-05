@@ -1,3 +1,11 @@
+/*–––––––––––––––––––––––––––––––––––––----––––––––––––––––––*/
+/* CmdParser.h                                               */
+/*                                                           */
+/* Вспомогательный класс CmdParser, упрощающий работу с      */
+/* аргументами командной строки, вводимых пользователем      */
+/* Автор: Казанцев М.А., 2021 г.                             */
+/*                                                           */
+/* –––––––––––––––––––––––––––––––––––––---––––––––––––––––––*/
 #ifndef PARALLEL_DDZ_CPP_CMD_PARSER_H
 #define PARALLEL_DDZ_CPP_CMD_PARSER_H
 
@@ -10,6 +18,18 @@ using namespace std;
 class CmdParser {
     unordered_map<string, string> tokens;
 public:
+    /*------------------------------------------------------------*/
+    /* Конструктор класса CmdParser(int argc, char **argv)		  */
+    /* Описание: Последовательный разбор аргументов командной     */
+    /* строки в словарь tokens                                    */
+    /* Параметры:                								  */
+    /* argc – количество аргументов командной строки              */
+    /* argv – значения аргументов командной строки                */
+    /* Возвращаемое значение:            						  */
+    /* Нет                                                        */
+    /* Внешние эффекты:              							  */
+    /* Нет                                                        */
+    /*------------------------------------------------------------*/
     CmdParser(int argc, char **argv) {
         for (int i = 1; i < argc; ++i) {
             const string key = argv[i];
@@ -18,46 +38,84 @@ public:
         }
     }
 
-    string getOption(const string& option) const {
+    /*------------------------------------------------------------*/
+    /* Метод CmdParser::getOption(const string& option) 		  */
+    /* Описание: Получение значение параметра option              */
+    /* Параметры:                								  */
+    /* option – имя параметра                                     */
+    /* Возвращаемое значение:            						  */
+    /* Значение параметра option                                  */
+    /* Внешние эффекты:              							  */
+    /* Нет                                                        */
+    /*------------------------------------------------------------*/
+    string getOption(const string &option) const {
         return tokens.at(option);
     }
 
-    bool optionExists(const string& option) const {
+    /*------------------------------------------------------------*/
+    /* Метод CmdParser::optionExists(const string& option) 		  */
+    /* Описание: Проверка наличия параметра option                */
+    /* Параметры:                								  */
+    /* option – имя параметра                                     */
+    /* Возвращаемое значение:            						  */
+    /* true - аргумент присутсвует                                */
+    /* false - аргумент отсутсвует                                */
+    /* Внешние эффекты:              							  */
+    /* Нет                                                        */
+    /*------------------------------------------------------------*/
+    bool optionExists(const string &option) const {
         return tokens.find(option) != tokens.end();
     }
 
+    /*------------------------------------------------------------*/
+    /* Метод CmdParser::getMode(const string& option)    		  */
+    /* Описание: Получение режима работы программы                */
+    /* Параметры:                								  */
+    /* Нет                                                        */
+    /* Возвращаемое значение:            						  */
+    /* true - режим тестирования                                  */
+    /* false - режим вычислительного эксперимента                 */
+    /* Внешние эффекты:              							  */
+    /* Нет                                                        */
+    /*------------------------------------------------------------*/
     bool getMode() const {
         if (optionExists("-n") && optionExists("-m") && !optionExists("-f"))
             return false;
         return true;
     }
-    void checkArguments() const {
+
+    /*------------------------------------------------------------*/
+    /* Метод CmdParser::checkArguments()                		  */
+    /* Описание: Проверка наличия обязательных аргументов         */
+    /* Параметры:                								  */
+    /* Нет                                                        */
+    /* Возвращаемое значение:            						  */
+    /* Код ошибки, в случае наличия всех аргументов возвращает 0  */
+    /* Внешние эффекты:              							  */
+    /* Нет                                                        */
+    /*------------------------------------------------------------*/
+    int checkArguments() const {
         int n = -1;
         int m = -1;
         if (optionExists("-n") && optionExists("-m")) {
             for (char c: getOption("-n"))
                 if (!isdigit(c)) {
                     cerr << "Invalid sequence length" << endl;
-                    MPI_Abort(MPI_COMM_WORLD, -2);
-                    MPI_Finalize();
-                    exit(-2);
+                    return -2;
                 }
             for (char c: getOption("-m"))
                 if (!isdigit(c)) {
                     cerr << "Invalid amount of sequences" << endl;
-                    MPI_Abort(MPI_COMM_WORLD, -3);
-                    MPI_Finalize();
-                    exit(-3);
+                    return -3;
                 }
             n = stoi(getOption("-n"));
             m = stoi(getOption("-m"));
         }
-        if ((n < 0 || m < 0 ) && !optionExists("-f")) {
+        if ((n < 0 || m < 0) && !optionExists("-f")) {
             cerr << "Invalid parameters" << endl;
-            MPI_Abort(MPI_COMM_WORLD, -1);
-            MPI_Finalize();
-            exit(-1);
+            return -1;
         }
+        return 0;
     }
 };
 
