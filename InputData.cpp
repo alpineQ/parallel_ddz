@@ -17,17 +17,17 @@ using namespace std;
 /**
  * Заполнение последовательностей случайными значениями
  *
- * @param n – число последовательностей
- * @param m – длина последовательности
+ * @param n – длина последовательности
+ * @param m – число последовательностей
  * @param type – тип данных последовательностей:
  *             - true - для целочисленных значений,
  *             - false - для значений с плавающей точкой
  */
 void InputData::generateData(int n, int m, bool type) {
-    this->nSequences = n;
-    this->sequenceLength = m;
-    for (unsigned i = 0; i < n; ++i) {
-        sequences.emplace_back(m, type);
+    nSequences = m;
+    sequenceLength = n;
+    for (unsigned i = 0; i < nSequences; ++i) {
+        sequences.emplace_back(sequenceLength, type);
         sequences[i].generate();
     }
 }
@@ -51,7 +51,7 @@ int InputData::loadFromFile(const string &filename) {
     auto dataPosition = inputFile.tellg();
 
     for (std::string line; std::getline(inputFile, line);) {
-        if (line.empty())
+        if (line.empty() || line == "\n" || line == "\r")
             continue;
         sequences.emplace_back(sequenceLength, line.find(',') == -1 && line.find('.') == -1);
     }
@@ -64,8 +64,11 @@ int InputData::loadFromFile(const string &filename) {
             inputFile >> value;
             try {
                 for (char c: value)
-                    if (!isdigit(c) && c != '-' && (sequences[i].type || c != ',' && c != '.' && !sequences[i].type))
+                    if (!isdigit(c) && c != '-' && sequences[i].type) {
                         throw invalid_argument("Invalid symbol");
+                    } else if (!isdigit(c) && c != '-' && c != ',' && c != '.' && !sequences[i].type) {
+                        throw invalid_argument("Invalid symbol");
+                    }
                 if (sequences[i].type)
                     ((int *) sequences[i].data)[j] = stoi(value);
                 else

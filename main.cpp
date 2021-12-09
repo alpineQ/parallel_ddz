@@ -11,7 +11,6 @@
 #include <chrono>
 #include <cmath>
 #include <mpi.h>
-#include <iomanip>
 #include "DataSharing.h"
 #include "CmdParser.h"
 
@@ -28,8 +27,9 @@ using namespace chrono;
  * частных сумм
  */
 void partialSum(Sequence sequence) {
-#pragma omp parallel for default(none) shared(sequence)
-    for (unsigned i = 0; i < sequence.length; ++i) {
+    unsigned nIterations = floor(log2(sequence.length));
+    #pragma omp parallel for default(none) firstprivate(nIterations) shared(sequence)
+    for (unsigned i = 0; i <= nIterations; ++i) {
         int shift = int(pow(2, i));
         Sequence Q = sequence.shiftRight(shift);
         sequence += Q;
