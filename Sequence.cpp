@@ -87,8 +87,10 @@ Sequence Sequence::shiftRight(int shift) const {
 Sequence Sequence::operator+=(const Sequence &other) {
     for (unsigned j = 0; j < length; ++j)
         if (type)
+            #pragma omp atomic
             ((int *) data)[j] += ((int *) other.data)[j];
         else
+            #pragma omp atomic
             ((float *) data)[j] += ((float *) other.data)[j];
     return *this;
 }
