@@ -71,8 +71,7 @@ int main(int argc, char *argv[]) {
             }
         } else
             input.generateData(stoi(cmd.getOption("-n")),
-                               stoi(cmd.getOption("-m")),
-                               true);
+                               stoi(cmd.getOption("-m")));
         MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
         sequences = sendDataToProcesses(input, nProcesses);
     } else {

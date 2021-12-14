@@ -21,7 +21,7 @@ public:
     int nSequences{}; // n
 	
     int loadFromFile(const string &filename);
-    void generateData(int n, int m, bool type);
+    void generateData(int n, int m);
 	int* getDataPerProcess(int nProcesses) const;
 };
 

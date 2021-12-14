@@ -19,15 +19,12 @@ using namespace std;
  *
  * @param n – длина последовательности
  * @param m – число последовательностей
- * @param type – тип данных последовательностей:
- *             - true - для целочисленных значений,
- *             - false - для значений с плавающей точкой
  */
-void InputData::generateData(int n, int m, bool type) {
+void InputData::generateData(int n, int m) {
     nSequences = m;
     sequenceLength = n;
     for (unsigned i = 0; i < nSequences; ++i) {
-        sequences.emplace_back(sequenceLength, type);
+        sequences.emplace_back(sequenceLength);
         sequences[i].generate();
     }
 }
@@ -53,7 +50,7 @@ int InputData::loadFromFile(const string &filename) {
     for (std::string line; std::getline(inputFile, line);) {
         if (line.empty() || line == "\n" || line == "\r")
             continue;
-        sequences.emplace_back(sequenceLength, line.find(',') == -1 && line.find('.') == -1);
+        sequences.emplace_back(sequenceLength);
     }
     inputFile.clear();
     inputFile.seekg(dataPosition);
@@ -64,15 +61,9 @@ int InputData::loadFromFile(const string &filename) {
             inputFile >> value;
             try {
                 for (char c: value)
-                    if (!isdigit(c) && c != '-' && sequences[i].type) {
+                    if (!isdigit(c) && c != '-' && c != ',' && c != '.')
                         throw invalid_argument("Invalid symbol");
-                    } else if (!isdigit(c) && c != '-' && c != ',' && c != '.' && !sequences[i].type) {
-                        throw invalid_argument("Invalid symbol");
-                    }
-                if (sequences[i].type)
-                    ((int *) sequences[i].data)[j] = stoi(value);
-                else
-                    ((float *) sequences[i].data)[j] = stof(value);
+                sequences[i].data[j] = stof(value);
             } catch (invalid_argument &error) {
                 cerr << "Invalid data format: " << i + 1 << " " << j + 1 << endl;
                 inputFile.close();

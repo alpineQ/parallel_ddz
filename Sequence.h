@@ -14,12 +14,11 @@
 
 class Sequence {
 public:
-    void *data = nullptr;
+    float *data = nullptr;
     int length = 0;
-    bool type = true;
 
     void free() const;
-    Sequence(int length, bool type);
+    explicit Sequence(int length);
     void generate() const;
     void print() const;
     Sequence shiftRight(int shift) const;

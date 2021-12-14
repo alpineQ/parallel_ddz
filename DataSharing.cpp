@@ -12,52 +12,6 @@
 
 
 /**
- * Отправка типов данных последовательностей всем MPI-процессам
- *
- * @param nProcesses – число MPI-процессов
- * @param dataPerProcess – массив распределения количества данных по процессам
- */
-void sendTypes(int nProcesses, int* dataPerProcess, InputData input) {
-    bool *types = safeAllocate<bool>(nProcesses);
-    int *displacements = safeAllocate<int>(nProcesses);
-    for (unsigned i = 0; i < nProcesses; ++i) {
-        types[i] = input.sequences[i].type;
-        displacements[i] = 0;
-    }
-    MPI_Scatterv(types,
-                 dataPerProcess,
-                 displacements,
-                 MPI_CXX_BOOL,
-                 nullptr,
-                 0,
-                 MPI_CXX_BOOL,
-                 ROOT_RANK,
-                 MPI_COMM_WORLD);
-    delete[] types;
-    delete[] displacements;
-}
-
-/**
- * Принятие типов данных последовательностей MPI-процессом
- *
- * @param nSequences – число последовательностей
- * @returns типы данных последовательностей
- */
-bool* recvTypes(int nSequences) {
-    bool *types = safeAllocate<bool>(nSequences);
-    MPI_Scatterv(nullptr,
-                 nullptr,
-                 nullptr,
-                 MPI_CXX_BOOL,
-                 types,
-                 nSequences,
-                 MPI_CXX_BOOL,
-                 ROOT_RANK,
-                 MPI_COMM_WORLD);
-    return types;
-}
-
-/**
  * Отправка данных последовательностей всем MPI-процессам
  *
  * @param dataPerProcess – массив распределения количества данных по процессам
@@ -74,7 +28,7 @@ vector<Sequence> sendData(const int* dataPerProcess, InputData input) {
             else
                 MPI_Isend(input.sequences[sequence].data,
                           input.sequenceLength,
-                          (input.sequences[sequence].type) ? MPI_INT : MPI_FLOAT,
+                          MPI_FLOAT,
                           process,
                           i,
                           MPI_COMM_WORLD,
@@ -89,16 +43,15 @@ vector<Sequence> sendData(const int* dataPerProcess, InputData input) {
  *
  * @param nSequences - число последовательностей
  * @param sequenceLength – длина последовательностей
- * @param types – типы данных последовательностей
  * @returns данные последовательностей, предназначенные главному MPI-процессу
  */
-vector<Sequence> recvData(int nSequences, int sequenceLength, const bool* types) {
+vector<Sequence> recvData(int nSequences, int sequenceLength) {
     vector<Sequence> sequences;
     for (int i = 0; i < nSequences; ++i) {
-        sequences.emplace_back(sequenceLength, types[i]);
+        sequences.emplace_back(sequenceLength);
         MPI_Recv(sequences[i].data,
                  sequenceLength,
-                 (types[i]) ? MPI_INT : MPI_FLOAT,
+                 MPI_FLOAT,
                  ROOT_RANK,
                  i,
                  MPI_COMM_WORLD,
@@ -129,9 +82,7 @@ vector<Sequence> getDataFromRoot() {
                 MPI_INT,
                 ROOT_RANK,
                 MPI_COMM_WORLD);
-    bool* types = recvTypes(dataPerProcess);
-    vector<Sequence> data = recvData(dataPerProcess,sequenceLength, types);
-    delete[] types;
+    vector<Sequence> data = recvData(dataPerProcess,sequenceLength);
     return data;
 }
 
@@ -153,7 +104,6 @@ vector<Sequence> sendDataToProcesses(InputData input, int nProcesses) {
                 MPI_INT,
                 ROOT_RANK,
                 MPI_COMM_WORLD);
-    sendTypes(nProcesses, dataPerProcess, input);
     vector<Sequence> sequences = sendData(dataPerProcess, input);
 
     delete[] dataPerProcess;

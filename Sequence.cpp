@@ -16,17 +16,10 @@ using namespace std;
  * Выделение памяти под последовательность длины length и типа type
  *
  * @param length – длина последовательности
- * @param type – тип данных последовательности:
- *             - true - для целочисленных значений,
- *             - false - для значений с плавающей точкой
  */
-Sequence::Sequence(int length, bool type) {
+Sequence::Sequence(int length) {
     this->length = length;
-    this->type = type;
-    if (type)
-        data = safeAllocate<int>(length);
-    else
-        data = safeAllocate<float>(length);
+    data = safeAllocate<float>(length);
 }
 
 /**
@@ -37,10 +30,7 @@ Sequence::Sequence(int length, bool type) {
  * объектов класса как результата работы функции
  */
 void Sequence::free() const {
-    if (type)
-        delete[] (int *) data;
-    else
-        delete[] (float *) data;
+    delete[] data;
 }
 
 /**
@@ -51,10 +41,7 @@ void Sequence::generate() const {
     mt19937 rng(rd());
     uniform_int_distribution<int> uni(floor(INT_MIN / 8), floor(INT_MAX / 8));
     for (unsigned j = 0; j < length; ++j)
-        if (type)
-            ((int *) data)[j] = uni(rng);
-        else
-            ((float *) data)[j] = float(uni(rng) + uni(rng) / 1000);
+        data[j] = float(uni(rng) + uni(rng) / 1000);
 }
 
 /**
@@ -66,12 +53,9 @@ void Sequence::generate() const {
  * элементов
  */
 Sequence Sequence::shiftRight(int shift) const {
-    Sequence shiftedSequence(length, type);
+    Sequence shiftedSequence(length);
     for (unsigned j = 0; j < length; ++j)
-        if (type)
-            ((int *) shiftedSequence.data)[j] = (j < shift) ? 0 : ((int *) data)[j - shift];
-        else
-            ((float *) shiftedSequence.data)[j] = (j < shift) ? 0 : ((float *) data)[j - shift];
+        shiftedSequence.data[j] = (j < shift) ? 0 : data[j - shift];
     return shiftedSequence;
 }
 
@@ -86,12 +70,8 @@ Sequence Sequence::shiftRight(int shift) const {
  */
 Sequence Sequence::operator+=(const Sequence &other) {
     for (unsigned j = 0; j < length; ++j)
-        if (type)
-            #pragma omp atomic
-            ((int *) data)[j] += ((int *) other.data)[j];
-        else
-            #pragma omp atomic
-            ((float *) data)[j] += ((float *) other.data)[j];
+        #pragma omp atomic
+        data[j] += other.data[j];
     return *this;
 }
 
@@ -102,9 +82,6 @@ Sequence Sequence::operator+=(const Sequence &other) {
  */
 void Sequence::print() const {
     for (unsigned j = 0; j < length; ++j)
-        if (type)
-            cout << ((int *) data)[j] << " ";
-        else
-            cout << ((float *) data)[j] << " ";
+        cout << data[j] << " ";
     cout << endl;
 }
