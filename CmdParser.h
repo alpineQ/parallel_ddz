@@ -45,7 +45,7 @@ public:
      * Проверка наличия параметра option
      * @param option – имя параметра
      * @returns: true - аргумент присутсвует
-     *          false - аргумент отсутсвует
+     *           false - аргумент отсутсвует
      */
     bool optionExists(const string &option) const {
         return tokens.find(option) != tokens.end();
@@ -54,12 +54,10 @@ public:
     /**
      * Получение режима работы программы
      * @returns: true - режим тестирования
-     *          false - режим вычислительного эксперимента
+     *           false - режим вычислительного эксперимента
      */
-    bool getMode() const {
-        if (optionExists("-n") && optionExists("-m") && !optionExists("-f"))
-            return false;
-        return true;
+    bool isTestingMode() const {
+        return !optionExists("-n") && !optionExists("-m") && optionExists("-f");
     }
 
     /**

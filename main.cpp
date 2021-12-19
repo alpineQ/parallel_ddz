@@ -23,16 +23,18 @@ using namespace chrono;
  * Вычисление частных сумм последовательности sequence
  *
  * @param sequence – заданная последовательность
+ * @param sequenceLength – длина последовательности
  * @note В переменную sequence записывается результат вычисления
  * частных сумм
  */
-void partialSum(Sequence sequence) {
-    unsigned nIterations = floor(log2(sequence.length));
-    #pragma omp parallel for default(none) firstprivate(nIterations) shared(sequence)
+void partialSum(float* sequence, int sequenceLength) {
+    unsigned nIterations = floor(log2(sequenceLength));
+    #pragma omp parallel for default(none) firstprivate(nIterations, sequenceLength) shared(sequence)
     for (unsigned i = 0; i <= nIterations; ++i) {
         int shift = int(pow(2, i));
-        Sequence Q = sequence.shiftRight(shift);
-        sequence += Q;
+        for (unsigned j = 0; j < sequenceLength; ++j)
+            #pragma omp atomic
+            sequence[j] += (j < shift) ? 0 : sequence[j - shift];
     }
 }
 
@@ -47,60 +49,70 @@ int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     int rank;
     int nProcesses;
+    int nSequences;
+    int sequenceLength;
     MPI_Comm_size(MPI_COMM_WORLD, &nProcesses);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     CmdParser cmd(argc, argv);
-    vector<Sequence> sequences;
+    float** sequences;
 
-    int flag;
+    int err;
     if (rank == ROOT_RANK) {
-        flag = cmd.checkArguments();
-        if (flag != 0) {
-            MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+        err = cmd.checkArguments();
+        if (err != 0) {
+            MPI_Bcast(&err, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
             MPI_Finalize();
-            return flag;
+            return err;
         }
-        InputData input;
-        if (cmd.getMode()) {
-            flag = input.loadFromFile(cmd.getOption("-f"));
-            if (flag != 0) {
-                MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+        if (cmd.isTestingMode()) {
+            err = loadFromFile(cmd.getOption("-f"), sequences, nSequences, sequenceLength);
+            if (err != 0) {
+                MPI_Bcast(&err, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
                 MPI_Finalize();
-                return flag;
+                return err;
             }
-        } else
-            input.generateData(stoi(cmd.getOption("-n")),
-                               stoi(cmd.getOption("-m")));
-        MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
-        sequences = sendDataToProcesses(input, nProcesses);
-    } else {
-        MPI_Bcast(&flag, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
-        if (flag != 0) {
-            MPI_Finalize();
-            return flag;
+        } else {
+            sequenceLength = stoi(cmd.getOption("-n"));
+            nSequences = stoi(cmd.getOption("-m"));
+            err = generateData(sequenceLength, nSequences, sequences);
+            if (err != 0) {
+                MPI_Bcast(&err, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+                MPI_Finalize();
+                return err;
+            }
         }
-        sequences = getDataFromRoot();
+        MPI_Bcast(&err, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+        sendDataToProcesses(sequences, nSequences, sequenceLength, nProcesses);
+    } else {
+        MPI_Bcast(&err, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+        if (err != 0) {
+            MPI_Finalize();
+            return err;
+        }
+        getDataFromRoot(sequences, nSequences, sequenceLength);
     }
 
 
     steady_clock::time_point begin, end;
 
     begin = steady_clock::now();
-    for (const Sequence &sequence: sequences)
-        partialSum(sequence);
+    for (int i = 0; i < nSequences; ++i)
+        partialSum(sequences[i], sequenceLength);
     end = steady_clock::now();
 
-    for (unsigned i = 0; i < nProcesses; ++i) {
-        if (rank == i)
-            for (Sequence sequence: sequences) {
-                if (cmd.getMode())
-                    sequence.print();
-                sequence.free();
+    for (unsigned process = 0; process < nProcesses; ++process) {
+        if (rank == process)
+            for (int i = 0; i < nSequences; ++i) {
+                if (cmd.isTestingMode()) {
+                    for (unsigned j = 0; j < sequenceLength; ++j)
+                        cout << sequences[i][j] << " ";
+                    cout << endl;
+                }
             }
         MPI_Barrier(MPI_COMM_WORLD);
     }
-    if (!cmd.getMode()) {
+    if (!cmd.isTestingMode()) {
         unsigned sec = duration_cast<seconds>(end - begin).count();
         unsigned ms = duration_cast<milliseconds>(end - begin).count();
         double delta = sec + double(ms) / 1000;
@@ -110,6 +122,7 @@ int main(int argc, char *argv[]) {
         cout << "Elapsed time: " << maxDelta << " seconds" << endl;
     }
 
+    delete[] sequences;
     MPI_Finalize();
     return 0;
 }

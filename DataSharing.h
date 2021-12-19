@@ -11,7 +11,7 @@
 
 #include "InputData.h"
 
-vector<Sequence> sendDataToProcesses(InputData input, int nProcesses);
-vector<Sequence> getDataFromRoot();
+void sendDataToProcesses(float** sequences, int &nSequences, int sequenceLength, int nProcesses);
+void getDataFromRoot(float** data, int &dataPerProcess, int &sequenceLength);
 
 #endif //PARTIAL_SUM_DATA_SHARING_H

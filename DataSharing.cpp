@@ -12,63 +12,12 @@
 
 
 /**
- * Отправка данных последовательностей всем MPI-процессам
- *
- * @param dataPerProcess – массив распределения количества данных по процессам
- * @param input – данные последовательностей
- * @returns данные последовательностей, предназначенные главному MPI-процессу
- */
-vector<Sequence> sendData(const int* dataPerProcess, InputData input) {
-    vector<Sequence> rootData;
-    for (int process = 0, sequence = 0; sequence < input.nSequences; ++process) {
-        MPI_Request request = MPI_REQUEST_NULL;
-        for (int i = 0; i < dataPerProcess[process]; ++i, ++sequence) {
-            if (process == ROOT_RANK)
-                rootData.push_back(input.sequences[sequence]);
-            else
-                MPI_Isend(input.sequences[sequence].data,
-                          input.sequenceLength,
-                          MPI_FLOAT,
-                          process,
-                          i,
-                          MPI_COMM_WORLD,
-                          &request);
-        }
-    }
-    return rootData;
-}
-
-/**
- * Приём данных последовательностей MPI-процессом
- *
- * @param nSequences - число последовательностей
- * @param sequenceLength – длина последовательностей
- * @returns данные последовательностей, предназначенные главному MPI-процессу
- */
-vector<Sequence> recvData(int nSequences, int sequenceLength) {
-    vector<Sequence> sequences;
-    for (int i = 0; i < nSequences; ++i) {
-        sequences.emplace_back(sequenceLength);
-        MPI_Recv(sequences[i].data,
-                 sequenceLength,
-                 MPI_FLOAT,
-                 ROOT_RANK,
-                 i,
-                 MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
-    }
-    return sequences;
-}
-
-/**
  * Приём необходимых данных для решения задачи MPI-процессом
- *
- * @returns данные последовательностей
+ * @param data данные последовательностей
+ * @param dataPerProcess количество последовательностей
+ * @param sequenceLength длина последовательности
  */
-vector<Sequence> getDataFromRoot() {
-    int sequenceLength;
-    int dataPerProcess;
-
+void getDataFromRoot(float** data, int &dataPerProcess, int &sequenceLength) {
     MPI_Bcast(&sequenceLength,
               1,
               MPI_INT,
@@ -82,30 +31,41 @@ vector<Sequence> getDataFromRoot() {
                 MPI_INT,
                 ROOT_RANK,
                 MPI_COMM_WORLD);
-    vector<Sequence> data = recvData(dataPerProcess,sequenceLength);
-    return data;
+    data = new float*[dataPerProcess];
+    for (unsigned i = 0; i < dataPerProcess; ++i)
+        data[i] = new float[sequenceLength];
+    MPI_Reduce_scatter(nullptr, data, nullptr, MPI_FLOAT, 0, MPI_COMM_WORLD);
 }
 
 /**
  * Отправка всех необходимых данных для решения задачи всем MPI-процессам
  *
- * @param input – данные последовательностей
+ * @param sequences – последовательности чисел с плавающей запятой
+ * @param nSequences – число последовательностей
+ * @param sequenceLength – длина последовательностей
  * @param nProcesses – число MPI-процессов
- * @returns данные последовательностей, предназначенные главному MPI-процессу
  */
-vector<Sequence> sendDataToProcesses(InputData input, int nProcesses) {
-    int *dataPerProcess = input.getDataPerProcess(nProcesses);
-    MPI_Bcast(&input.sequenceLength, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+void sendDataToProcesses(float** sequences, int &nSequences, int sequenceLength, int nProcesses) {
+    MPI_Bcast(&sequenceLength, 1, MPI_INT, ROOT_RANK, MPI_COMM_WORLD);
+    int *dataPerProcess;
+    dataPerProcess = new int[nProcesses];
+    getDataPerProcess(nProcesses, nSequences, dataPerProcess);
     MPI_Scatter(dataPerProcess,
                 1,
                 MPI_INT,
                 nullptr,
                 0,
-                MPI_INT,
+                MPI_UNSIGNED,
                 ROOT_RANK,
                 MPI_COMM_WORLD);
-    vector<Sequence> sequences = sendData(dataPerProcess, input);
+    float** rootData;
+    rootData = new float*[nSequences];
+    for (unsigned i = 0; i < nSequences; ++i)
+        rootData[i] = new float[sequenceLength];
+    MPI_Reduce_scatter(sequences, rootData, dataPerProcess, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
+    nSequences = dataPerProcess[ROOT_RANK];
     delete[] dataPerProcess;
-    return sequences;
+    delete[] sequences;
+    sequences = rootData;
 }

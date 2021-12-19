@@ -10,6 +10,6 @@ set(MPI_GUESS_LIBRARY_NAME MPICH2)
 
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
-add_executable(partial_sum main.cpp CmdParser.h Sequence.cpp Sequence.h InputData.cpp InputData.h DataSharing.cpp DataSharing.h)
+add_executable(partial_sum main.cpp CmdParser.h InputData.cpp InputData.h DataSharing.cpp DataSharing.h)
 target_link_libraries(partial_sum PUBLIC MPI::MPI_CXX)
 target_link_libraries(partial_sum PUBLIC OpenMP::OpenMP_CXX)
